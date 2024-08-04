@@ -1,0 +1,13 @@
+[package]
+name = "how_me_your_plan"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+charming = "*"
+tokio = { version = "1.29.1", features = ["full"] }
+axum = "0.6.18"
+askama = "0.12.0"
+lazy_static = "1.4.0"
