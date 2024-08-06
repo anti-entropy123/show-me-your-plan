@@ -1,0 +1,22 @@
+<!-- <div>
+    <iframe srcdoc="{{ render_content }}" width="100%" height="" frameborder="0" name="iframe名称" scrolling="no">
+    </iframe>
+    <div>
+        <form action="/" method="post">
+            <label for="textInput"> Input your plan: </label><br><br>
+            <textarea id="textInput" name="textInput" rows="10" cols="50">{{ plan_data }}</textarea><br><br>
+            <input type="submit" value="Submit">
+        </form>
+    </div>
+</div> -->
+<div>
+    <iframe srcdoc="{{ render_content }}" width="100%" height="{{ height }}" frameborder="0" name="iframe名称" scrolling="no">
+    </iframe>
+    <div style="display: flex; justify-content: center; align-items: center">
+        <form action="/" method="post">
+            <label for="textInput">Input your plan:</label><br><br>
+            <textarea id="textInput" name="textInput" rows="10" cols="50">{{ plan_data }}</textarea><br><br>
+            <input type="submit" value="Submit">
+        </form>
+    </div>
+</div>

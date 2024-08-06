@@ -3,16 +3,17 @@ use axum::{
     extract,
     http::StatusCode,
     response::{Html, IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use charming::HtmlRenderer;
-use how_me_your_plan::CHARTS;
+use serde::{Deserialize, Serialize};
+use show_me_your_plan::{PlanData, CHARTS};
 
 #[tokio::main]
 async fn main() {
     println!("listen on: http://127.0.0.1:5555");
-    let app = Router::new().route("/", get(render));
+    let app = Router::new().route("/", get(index)).route("/", post(index));
 
     axum::Server::bind(&"127.0.0.1:5555".parse().unwrap())
         .serve(app.into_make_service())
@@ -20,47 +21,81 @@ async fn main() {
         .unwrap();
 }
 
-async fn index() -> impl IntoResponse {
+#[derive(Serialize, Deserialize)]
+struct MyForm {
+    #[serde(rename = "textInput")]
+    text_input: String,
+}
+
+#[axum::debug_handler]
+async fn index(body: Option<extract::Form<MyForm>>) -> impl IntoResponse {
+    let default_plan_data = vec![];
+
+    let plan_data: Vec<PlanData> = if let Some(body) = body {
+        serde_json::from_str(&body.text_input).unwrap_or(default_plan_data)
+    } else {
+        default_plan_data
+    };
+    println!("{:?}", plan_data);
+
     let mut template = IndexTemplate::new();
-    for (key, value) in CHARTS.iter() {
-        template.collection(key, value.iter().map(|(k, _)| *k).collect::<Vec<_>>());
-    }
+
+    let renderer = HtmlRenderer::new(
+        "heatmap_as_weekday",
+        1600,
+        120 + 60 * plan_data.len() as u64,
+    );
+    template.render_content = renderer
+        .render(&show_me_your_plan::heatmap::heatmap_as_weekday::chart(
+            plan_data.clone(),
+        ))
+        .unwrap();
+    template.height = 150 + 60 * plan_data.len();
+
+    let plan_data = if plan_data.is_empty() {
+        vec![PlanData::default()]
+    } else {
+        plan_data
+    };
+    template.plan_data = serde_json::to_string_pretty(&plan_data).unwrap();
+
     HtmlTemplate(template)
 }
 
-async fn render() -> impl IntoResponse {
+fn render() -> String {
     let typ = "heatmap";
     let name = "heatmap_as_weekday";
     let renderer = HtmlRenderer::new(name, 1600, 800);
 
     let chart = match CHARTS.get(typ) {
         Some(charts) => match charts.get(name) {
-            Some(chart) => chart(),
-            None => return (StatusCode::NOT_FOUND, "Chart Not Found").into_response(),
+            Some(chart) => chart(vec![PlanData {
+                time_period: ((1, 10), (5, 9)),
+                val: 10,
+                name: "Demo".to_owned(),
+            }]),
+            None => return String::new(),
         },
-        None => return (StatusCode::NOT_FOUND, "Chart Type Not Found").into_response(),
+        None => return String::new(),
     };
-    Html(renderer.render(&chart).unwrap()).into_response()
+    renderer.render(&chart).unwrap()
 }
 
 #[derive(Template)]
-#[template(path = "index.html")]
+#[template(path = "my_index.html")]
 struct IndexTemplate {
-    collections: Vec<(String, Vec<String>)>,
+    render_content: String,
+    plan_data: String,
+    height: usize,
 }
 
 impl IndexTemplate {
     fn new() -> Self {
         Self {
-            collections: vec![],
+            plan_data: String::new(),
+            render_content: String::new(),
+            height: 400,
         }
-    }
-
-    fn collection(&mut self, name: &str, charts: Vec<&str>) {
-        self.collections.push((
-            name.to_string(),
-            charts.into_iter().map(|s| s.to_string()).collect(),
-        ));
     }
 }
 
